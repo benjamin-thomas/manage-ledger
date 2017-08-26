@@ -63,8 +63,9 @@ class Operation < Sequel::Model(DB.from(:splits))
     str_amount = format('%.2f', amount)
     cat = Memoize.accounts.fetch(account_guid)
     line = "    #{cat}  #{str_amount}"
-    line += "  ; ofx_id: #{ofx_id}" if ofx_id
-    line
+    memo_line = "; memo: #{memo}" unless memo.empty?
+    ofx_line = "; ofx_id: #{ofx_id}" if ofx_id
+    line + '  ' + [memo_line, ofx_line].join
   end
 end
 
