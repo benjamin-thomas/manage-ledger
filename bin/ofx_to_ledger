@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+
+require 'bundler'
+
+env = ENV['ENV'] || ''
+Bundler.require(:default, env)
+
+require 'optparse'
+
+options = {}
+OptionParser.new do |opts|
+  pgm_name = File.basename($PROGRAM_NAME)
+  opts.banner =<<~EOS
+  ---
+  This script helps you keep your ledger file synchronized with your bank's data.
+
+  OFX file have a transaction id.
+
+  By tagging a ledger entry with the transaction id given by your bank, we can
+  ensure all the transactions of a given OFX file are present in the ledger file.
+
+  This script halts on the first unsaved transaction, forcing the user to either
+  copy/paste the given snippet, or update an existing transaction with the given ofx_id.
+
+  This script does not write to the ledger file
+  ---
+
+  Usage: #{pgm_name} [OPTIONS] LEDGER_FILE OFX_FILE
+  EOS
+
+  opts.on('-v', '--verbose', 'Run verbosely') do |v|
+    options[:verbose] = v
+  end
+end.parse!
+
+ledger_path = ARGV[0] || exec("#{$PROGRAM_NAME} -h")
+ofx_path = ARGV[1] || exec("#{$PROGRAM_NAME} -h")
+
+[ledger_path, ofx_path].each do |path|
+  unless File.file?(path)
+    warn("Not a file: #{path}")
+    exit 1
+  end
+end
+
+ledger_content = File.read(ledger_path)
+
+ofx = OfxParser::OfxParser.parse(File.open(ofx_path))
+
+ts = ofx.bank_account.statement.transactions
+
+ts.each do |t|
+  if ledger_content.include?(t.fit_id)
+    warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
+    next
+  end
+
+  lines = []
+  lines << "#{t.date.strftime('%Y-%m-%d')} #{t.payee}"
+  lines << "    Assets:Bank  #{t.amount}  ; memo: #{t.memo} ; oxf_id: #{t.fit_id}"
+  lines << '    Expenses:???'
+
+  warn 'Found missing transaction, copy-paste or add missing ofx_id'
+  puts
+  puts lines
+  puts
+  exit 1
+end
+
+warn(:OK)
