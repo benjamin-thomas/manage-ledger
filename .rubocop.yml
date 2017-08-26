@@ -4,4 +4,4 @@ AllCops:
 Style/Documentation:
   Exclude:
     - 'test/**/*'
-    - 'bin/gnucash_to_ledger'
+    - 'lib/gnucash.rb'
