@@ -1,0 +1,7 @@
+AllCops:
+  TargetRubyVersion: 2.4
+
+Style/Documentation:
+  Exclude:
+    - 'test/**/*'
+    - 'bin/gnucash_to_ledger'
