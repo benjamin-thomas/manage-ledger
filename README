@@ -4,6 +4,4 @@ Requirements : ruby
 
 Prior to running a script, run the following command (once) to install dependencies
 
-```console
-bundle install --path ./vendor
-```
+    bundle install --path ./vendor
