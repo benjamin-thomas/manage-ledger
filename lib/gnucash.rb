@@ -6,7 +6,6 @@ end
 
 class Account < Sequel::Model
   many_to_one :parent, class: self, key: :parent_guid
-  one_to_many :children, class: self, key: :parent_guid
 
   def root?
     account_type == 'ROOT'
