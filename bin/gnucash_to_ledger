@@ -18,6 +18,10 @@ OptionParser.new do |opts|
   opts.on('-v', '--verbose', 'Run verbosely') do |v|
     options[:verbose] = v
   end
+
+  opts.on('--no-eager', 'Do not load all data up front (this will be slower, could be usefull for debugging)') do
+    options[:no_eager] = true
+  end
 end.parse!
 
 db_path = ARGV[0] || exec("#{$PROGRAM_NAME} -h")
@@ -32,7 +36,16 @@ options[:verbose] && DB.logger = Logger.new(STDERR)
 
 require './lib/gnucash'
 
-Transaction.order(Sequel.asc(:post_date)).each do |t|
+txs = Transaction
+  .order(Sequel.asc(:post_date))
+
+unless options[:no_eager]
+  txs = txs
+    .eager_graph(:operations => :ofx_slot)
+    .all # this is important
+end
+
+txs.each do |t|
   puts t.to_ledger
   puts
 end

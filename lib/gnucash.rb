@@ -53,8 +53,13 @@ class Transaction < Sequel::Model
 end
 
 class Operation < Sequel::Model(DB.from(:splits))
+  one_to_many :slots, key: :obj_guid
+  one_to_one :ofx_slot, clone: :slots do |ss|
+    ss.where(name: 'online_id')
+  end
+
   def ofx_id
-    Slot.find(obj_guid: guid, name: 'online_id')&.string_val
+    ofx_slot&.string_val
   end
 
   def for_ledger
