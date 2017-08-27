@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+
+require 'date'
+
+txs = {}
+new_tx = false
+idx = 0
+File.readlines(ARGV[0]).each do |line|
+  if line.match?(/\A\d{4}/)
+    idx += 1
+    new_tx = !new_tx
+    date = Date.parse(line.split(' ').first)
+    txs[idx] = { date: date, lines: [] }
+  end
+
+  if idx.zero? # first tx not found yet, headers
+    puts line
+    next
+  end
+
+  txs[idx][:lines] << line
+end
+
+txs.sort_by { |_idx, attrs| attrs.fetch(:date) }.each do |_idx, attrs|
+  attrs.fetch(:lines).each do |line|
+    puts line
+  end
+end
