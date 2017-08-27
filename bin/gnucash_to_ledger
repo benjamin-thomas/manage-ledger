@@ -32,7 +32,7 @@ options[:verbose] && DB.logger = Logger.new(STDOUT)
 
 require './lib/gnucash'
 
-Transaction.all do |t|
+Transaction.order(Sequel.asc(:post_date)).each do |t|
   puts t.to_ledger
   puts
 end
