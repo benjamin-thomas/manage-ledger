@@ -23,3 +23,21 @@ This script does not write to the ledger file
 ## ./bin/sort_ledger
 
 This script prints to STDOUT all the ledger file transactions, in ascending order.
+
+## ./bin/align_ledger_amounts
+
+Align amounts in a ledger file.
+
+Usage:
+
+   cat ./ledger.dat | ./bin/align_ledger_amounts > ./new_ledger.dat
+   ./bin/align_ledger_amounts ./ledger.dat > ./new_ledger.dat
+
+Vim:
+
+    :set formatprg=align_ledger_amounts
+
+vimrc:
+
+    "au FileType ledger set formatprg=ledger\ -f\ -\ print
+    au FileType ledger set formatprg=align_ledger_amounts

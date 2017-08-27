@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+
+require 'date'
+
+ARGF.each_line do |line|
+  if !line.start_with?(' ') || line.match?(/^\s+;/)
+    puts line
+    next
+  end
+
+  without_comments, comment = line.split(';', 2)
+  account, amount = without_comments.strip.split('  ').reject(&:empty?)
+
+  new_line = "  #{account}  #{amount.rjust(50-account.size)}"
+
+  new_line << "  ; #{comment.lstrip}" if comment
+  puts new_line
+end
