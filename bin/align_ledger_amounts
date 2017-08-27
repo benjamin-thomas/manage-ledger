@@ -7,6 +7,7 @@ CURRENCY_SYMBOL = '€'
 
 total = 0
 ARGF.each_line do |line|
+  line.gsub!("\t", ' ')
   total = 0 if line.match?(/^\d{4}/)
   if !line.start_with?(' ') || line.match?(/^\s+;/)
     puts line
