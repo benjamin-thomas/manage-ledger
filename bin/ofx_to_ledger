@@ -55,9 +55,10 @@ ts.each do |t|
     next
   end
 
+  debit_account = 'Assets:Bank'
   lines = []
   lines << "#{t.date.strftime('%Y-%m-%d')} #{t.payee}"
-  lines << "    Assets:Bank  #{t.amount}  ; memo: #{t.memo} ; oxf_id: #{t.fit_id}"
+  lines << "    #{debit_account}  #{t.amount.rjust(50-debit_account.length)}  ; memo: #{t.memo} ; oxf_id: #{t.fit_id}"
   lines << '    Expenses:???'
 
   warn 'Found missing transaction, copy-paste or add missing ofx_id'

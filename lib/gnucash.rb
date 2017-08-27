@@ -61,7 +61,7 @@ class Operation < Sequel::Model(DB.from(:splits))
     amount = BigDecimal.new(value_num) / BigDecimal.new(value_denom)
     str_amount = format('%.2f', amount)
     cat = Memoize.accounts.fetch(account_guid)
-    line = "    #{cat}  #{str_amount}"
+    line = "    #{cat}  #{str_amount.rjust(50-cat.length)}"
     memo_line = "; memo: #{memo}" unless memo.empty?
     ofx_line = "; ofx_id: #{ofx_id}" if ofx_id
     line + '  ' + [memo_line, ofx_line].join
