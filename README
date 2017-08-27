@@ -5,3 +5,21 @@ Requirements : ruby
 Prior to running a script, run the following command (once) to install dependencies
 
     bundle install --path ./vendor
+
+### bin/gnucash_to_ledger
+
+This scripts exports a gnucash db (file), with ofx metadata + memo field.
+
+## bin/ofx_to_ledger
+
+This script requires an ofx file, and a ledger file.
+
+It digests the ofx file, then halts on the first unsaved transaction, forcing
+the user to either copy/paste the printed snippet, or update an existing
+transaction with the given ofx_id.
+
+This script does not write to the ledger file
+
+## ./bin/sort_ledger
+
+This script prints to STDOUT all the ledger file transactions, in ascending order.
