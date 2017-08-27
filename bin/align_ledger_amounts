@@ -1,8 +1,13 @@
 #!/usr/bin/env ruby
 
 require 'date'
+require 'bigdecimal'
 
+CURRENCY_SYMBOL = '€'
+
+total = 0
 ARGF.each_line do |line|
+  total = 0 if line.match?(/^\d{4}/)
   if !line.start_with?(' ') || line.match?(/^\s+;/)
     puts line
     next
@@ -10,8 +15,20 @@ ARGF.each_line do |line|
 
   without_comments, comment = line.split(';', 2)
   account, amount = without_comments.strip.split('  ').reject(&:empty?)
+  amount = if amount.nil?
+             total * -1
+           else
+             amount.delete(CURRENCY_SYMBOL)
+           end
 
-  new_line = "  #{account}  #{String(amount).rjust(50-account.size)}"
+  if amount.to_s.include?('=') # balance assertion, skipping for now
+    puts line
+    next
+  end
+  total += BigDecimal.new(amount)
+
+  padding = 50 - account.size
+  new_line = "  #{account}  #{format('%.2f%s', amount, CURRENCY_SYMBOL).rjust(padding)}"
 
   new_line << "  ; #{comment.lstrip}" if comment
   puts new_line
