@@ -11,7 +11,7 @@ ARGF.each_line do |line|
   without_comments, comment = line.split(';', 2)
   account, amount = without_comments.strip.split('  ').reject(&:empty?)
 
-  new_line = "  #{account}  #{amount.rjust(50-account.size)}"
+  new_line = "  #{account}  #{String(amount).rjust(50-account.size)}"
 
   new_line << "  ; #{comment.lstrip}" if comment
   puts new_line
