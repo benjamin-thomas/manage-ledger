@@ -28,7 +28,7 @@ unless File.file?(db_path)
 end
 
 DB = Sequel.connect("sqlite://#{db_path}")
-options[:verbose] && DB.logger = Logger.new(STDOUT)
+options[:verbose] && DB.logger = Logger.new(STDERR)
 
 require './lib/gnucash'
 
