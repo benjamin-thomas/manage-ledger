@@ -49,8 +49,9 @@ ofx = OfxParser::OfxParser.parse(File.open(ofx_path))
 
 ts = ofx.bank_account.statement.transactions
 
+amount_padding = 49 # Not 50 due to minus sign
 ts.each do |t|
-  if ledger_content.include?(t.fit_id)
+  if ledger_content.include?("; ofx_id: #{t.fit_id}")
     warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
     next
   end
@@ -58,8 +59,9 @@ ts.each do |t|
   debit_account = 'Assets:Bank'
   lines = []
   lines << "#{t.date.strftime('%Y-%m-%d')} #{t.payee}"
-  lines << "    #{debit_account}  #{t.amount.rjust(50-debit_account.length)}  ; memo: #{t.memo} ; ofx_id: #{t.fit_id}"
-  lines << '    Expenses:???'
+  lines << "  ; #{t.memo} | #{t.payee}"
+  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id} ; date: #{t.date.strftime('%Y-%m-%d')}"
+  lines << '  Expenses:???'
 
   warn 'Found missing transaction, copy-paste or add missing ofx_id'
   puts
@@ -68,4 +70,15 @@ ts.each do |t|
   exit 1
 end
 
-warn(:OK)
+balance_date = ofx.bank_account.balance_date
+
+balance_date = balance_date.to_date if balance_date == balance_date.to_date
+
+# last_date = ts.sort_by(&:date).last.date
+min, max = ts.minmax { |a, b| a.date <=> b.date }
+puts '---'
+puts
+puts "First transaction on  : #{min.date}"
+puts "Last transaction on   : #{max.date}"
+puts
+puts "Balance on #{balance_date}: #{ofx.bank_account.balance}"
