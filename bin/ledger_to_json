@@ -68,7 +68,7 @@ def extract_postings(ps, date)
   total = 0
   ps.each do |p|
     if p.lstrip.start_with?(';')
-      mid_comment = p.lstrip
+      mid_comment = p.lstrip.chomp
       next
     end
     begin
