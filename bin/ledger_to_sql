@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+
+require 'json'
+require 'sequel'
+require 'awesome_print'
+
+Options = Struct.new(:db)
+args = Options.new('sqlite')
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{File.basename($0)} JSON [options]"
+
+  opts.on('-d DATABASE', '--database=DATABASE', '[sqlite, postgresql]') do |n|
+    args.db = n
+  end
+end.parse!
+
+ap(args)
+
+f = ARGF.to_io
+txs = JSON.parse(f.read)
+
+DB = Sequel.sqlite # memory database, requires sqlite3
+
+DB.execute('
+CREATE TABLE transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT
+  , guid CHAR(36) NOT NULL CHECK (LENGTH(guid) = 36) UNIQUE
+  , descr VARCHAR NOT NULL
+  , comment TEXT
+);
+')
+
+DB.execute('
+CREATE TABLE postings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT
+  , transaction_id INT NOT NULL REFERENCES transactions(id)
+  , date DATE NOT NULL
+  , account VARCHAR NOT NULL
+  , amount VARCHAR NOT NULL
+  , currency VARCHAR NOT NULL
+  , mid_comment TEXT
+  , ofx_id VARCHAR
+);
+')
+
+Transaction = DB[:transactions]
+Posting = DB[:postings]
+txs.each do |tx|
+  guid = tx.fetch('guid')
+  descr = tx.fetch('descr')
+  comment = tx.fetch('comment')
+  Transaction.insert(guid: guid, descr: descr, comment: comment)
+  t = Transaction.where(guid: guid).limit(1).first
+  tx.fetch('postings').each do |po|
+    transaction_id = t.fetch(:id)
+    date = po.fetch('date')
+    account = po.fetch('account')
+    amount = po.fetch('amount')
+    currency = po.fetch('currency')
+    mid_comment = po.fetch('mid_comment')
+    ofx_id = po.fetch('ofx_id')
+
+    Posting.insert(
+      transaction_id: transaction_id,
+      date: date,
+      account: account,
+      amount: amount,
+      currency: currency,
+      mid_comment: mid_comment,
+      ofx_id: ofx_id,
+    )
+  end
+end
+
+ap(Transaction.all)

@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+
+require 'date'
+
+prev_date = Date.new(0)
+ARGF.each_line do |line|
+  next unless line.match?(/\A\d{4}/)
+  date = Date.parse(line.split(' ').first)
+
+  if prev_date > date
+    warn("Out of order: \033[1;33m#{line}\033[0;m")
+    exit 1
+  end
+
+  prev_date = date
+end
+
+warn('Ledger is sorted!')

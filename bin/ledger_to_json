@@ -1,0 +1,191 @@
+#!/usr/bin/env ruby
+
+require 'date'
+require 'strscan'
+require 'bigdecimal'
+require 'digest'
+require 'json'
+
+require 'awesome_print'
+
+DATE_REGEX = /^\d{4}[\-\/]\d{2}[\-\/]\d{2}/
+
+def get_posting(s)
+  return :eos if s.eos?
+
+  line = s.scan_until(/\n/)
+  if line.match?(DATE_REGEX)
+    s.unscan
+    return :finished
+  end
+
+  return :skip if line == "\n"
+  line
+end
+
+def extract_posting(p, date, mid_comment)
+  s = StringScanner.new(p)
+  s.skip_until(/\s+/)
+
+  account = s.scan_until(/  /)
+  account.rstrip!
+
+  s.skip_until(/\s+/)
+  amount_str = s.scan_until(/\d+\.\d+/)
+  if amount_str.nil?
+    fail 'Could not parse amount (format must be: \d+\.\d+)'
+  end
+  amount = BigDecimal.new(amount_str)
+  currency = s.scan_until(/ |\n/)
+  currency.rstrip!
+
+  s.scan_until(/ /)
+  comment = if s.rest.start_with?(';')
+              s.rest
+            end
+
+  final_date = date
+  if (m = /date: (?<date2>\d{4}-\d{2}-\d{2})/.match(comment))
+    final_date = Date.parse(m.named_captures.fetch('date2'))
+  end
+
+  {
+    date: final_date,
+    account: account,
+    amount: amount,
+    currency: currency,
+    comment: comment&.rstrip,
+    mid_comment: mid_comment,
+    ofx_id: find_ofx_id(comment, mid_comment)
+  }
+end
+
+def extract_postings(ps, date)
+  mid_comment = nil
+  postings = []
+  total = 0
+  ps.each do |p|
+    if p.lstrip.start_with?(';')
+      mid_comment = p.lstrip
+      next
+    end
+    begin
+      postings << extract_posting(p, date, mid_comment)
+    rescue => e
+      p({posting: p})
+      fail("failed to extract posting: #{e}")
+    end
+    mid_comment = nil
+  end
+
+  postings
+end
+
+def find_guid!(tx)
+  m = tx.fetch(:postings).first.match(/guid: (?<guid>\S+)/)
+
+  # exp = tx.fetch(:postings).map { |p| p.match(/guid: (?<guid>\S+)/) }.reject { |m| m.nil? }.count
+  # if exp != 1
+  #   fail 'Something is wrong!'
+  # end
+
+  if m.nil?
+    fail 'No guid found for current transaction'
+  end
+  guid = m.named_captures.fetch('guid')
+  if guid.size != 36
+    fail "guid does not appear to be valid: '#{guid}'"
+  end
+  guid
+rescue => e
+  warn tx.fetch(:header)
+  warn '  ; guid: FIX_HERE'
+  warn tx.fetch(:postings)
+  raise(e)
+end
+
+OFX_ID_REGEX = /ofx_id: (?<ofx_id>\d+)/
+def find_ofx_id(comment, mid_comment)
+
+  m = OFX_ID_REGEX.match(comment) || OFX_ID_REGEX.match(mid_comment)
+  return if m.nil?
+
+  id = m.named_captures.fetch('ofx_id')
+  fail 'Something is wrong' if id.size != 13
+  id
+end
+
+def extract_tx(tx)
+  header = tx.fetch(:header)
+  s = StringScanner.new(header)
+  date_str = s.scan_until(/ /)
+  fail 'expected space' if date_str.nil?
+
+  date = Date.parse(date_str.rstrip)
+
+  descr, comment = s.rest.split('  ;')
+  postings = extract_postings(tx.fetch(:postings), date)
+  balance = postings.reduce(0) { |sum, p| sum += p.fetch(:amount) }
+  if balance != 0
+    warn("\033[1;31mImbalanced transaction:\033[1;m")
+    warn(tx.fetch(:header))
+    warn(tx.fetch(:postings))
+    exit 1
+  end
+  currencies = postings.map { |p| p.fetch(:currency) }.uniq
+  if currencies.count > 1
+    warn("\033[1;31mDiffering currencies for transaction:\033[1;m")
+    warn(tx.fetch(:header))
+    warn(tx.fetch(:postings))
+    exit 1
+  end
+  if currencies.first == ""
+    warn("\033[1;31mMissing a currency for transaction:\033[1;m")
+    warn(tx.fetch(:header))
+    warn(tx.fetch(:postings))
+    exit 1
+  end
+
+  guid = find_guid!(tx)
+
+  { guid: guid, descr: descr.chomp, comment: comment&.strip, postings: postings }
+end
+
+def get_transaction(s)
+  line = s.scan_until(/\n/)
+  return :not_transaction unless line.match?(DATE_REGEX)
+
+  tx = {
+    header: line,
+    postings: []
+  }
+
+  loop do
+    p = get_posting(s)
+    break if [:finished, :eos].include?(p)
+    next if p == :skip
+
+    tx.fetch(:postings) << p
+  end
+  {
+    raw: tx,
+    extracted: extract_tx(tx)
+  }
+end
+
+s = StringScanner.new(ARGF.read)
+txs = []
+loop do
+  tx = get_transaction(s)
+  next if tx == :not_transaction
+
+  txs << tx
+  break if s.eos?
+end
+
+if ENV['DEBUG'] == '1'
+  ap(txs)
+  exit
+end
+
+puts JSON.pretty_generate(txs.map { |t| t.fetch(:extracted) })

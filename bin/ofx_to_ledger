@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 
+load ENV.fetch('PAYEE_DATA_PATH')
+
 require 'bundler'
+require 'securerandom'
 
 env = ENV['ENV'] || ''
 Bundler.require(:default, env)
@@ -56,14 +59,38 @@ ts.each do |t|
     next
   end
 
+  # previous_txs = ''
+  # term = t.payee
+  # res = while previous_txs.empty?
+  #         previous_txs = `hledger reg Expenses desc:^'#{term}'$' --begin thisquarter`
+  #         require 'pry' ; binding.pry
+  #         term = term.split[0..-2].join(' ')
+  #         break :not_found if term.empty?
+  #       end
+  # Use thisquarter, thisyear, all if empty
+  # Or try everything first, and check if payee has same expenses account everywhere
+  # if positive, check Income, not Expenses
+  # if not found, try t.payee.split # 'PAYEE RANDOM
+  # t.payee.split[0..-2].join(' ')
+  # recurring transactions: hledger reg desc:'VIREMENT EMIS' amt:660
+  # This builtin also matches, but only the last transaction : hledger print Expenses -m PAYEE
+  # Implement memo field, or similar tag: hledger reg Expenses tag:memo=WEB
+  re, p = PAYEE.find { |re, attrs| re.match(t.payee) }
+
+  head = p&.fetch(:head) || t.payee
+  account = p&.fetch(:account) || 'Expenses::???'
+
   debit_account = 'Assets:Bank'
   lines = []
-  lines << "#{t.date.strftime('%Y-%m-%d')} #{t.payee}"
+  lines << "#{t.date.strftime('%Y-%m-%d')} #{head}"
+  lines << "  ; guid: #{SecureRandom.uuid}"
   lines << "  ; #{t.memo} | #{t.payee}"
   lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id} ; date: #{t.date.strftime('%Y-%m-%d')}"
-  lines << '  Expenses:???'
+  lines << "  #{account}"
 
-  warn 'Found missing transaction, copy-paste or add missing ofx_id'
+  warn "\nFound missing transaction, copy-paste or add missing ofx_id.".red
+  warn 'Use commande below to find proper account quickly:'.red
+  warn "\nhledger accounts ^Expenses | grep Car".yellow
   puts
   puts lines
   puts
