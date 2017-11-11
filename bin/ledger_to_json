@@ -31,11 +31,12 @@ def extract_posting(p, date, mid_comment)
   account.rstrip!
 
   s.skip_until(/\s+/)
-  amount_str = s.scan_until(/\d+\.\d+/)
+  amount_str = s.scan_until(/\d+\.\d{2}/)
   if amount_str.nil?
-    fail 'Could not parse amount (format must be: \d+\.\d+)'
+    fail 'Could not parse amount (format must be: \d+\.\d{2})'
   end
   amount = BigDecimal.new(amount_str)
+  cents = Integer(amount * 100) # export in cents
   currency = s.scan_until(/ |\n/)
   currency.rstrip!
 
@@ -52,7 +53,8 @@ def extract_posting(p, date, mid_comment)
   {
     date: final_date,
     account: account,
-    amount: amount,
+    amount_str: amount_str,
+    cents: cents,
     currency: currency,
     comment: comment&.rstrip,
     mid_comment: mid_comment,
@@ -125,7 +127,7 @@ def extract_tx(tx)
 
   descr, comment = s.rest.split('  ;')
   postings = extract_postings(tx.fetch(:postings), date)
-  balance = postings.reduce(0) { |sum, p| sum += p.fetch(:amount) }
+  balance = postings.reduce(0) { |sum, p| sum += p.fetch(:cents) }
   if balance != 0
     warn("\033[1;31mImbalanced transaction:\033[1;m")
     warn(tx.fetch(:header))

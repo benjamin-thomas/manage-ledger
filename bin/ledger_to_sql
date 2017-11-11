@@ -39,7 +39,7 @@ CREATE TABLE postings (
   , transaction_id INT NOT NULL REFERENCES transactions(id)
   , date DATE NOT NULL
   , account VARCHAR NOT NULL
-  , amount VARCHAR NOT NULL
+  , cents INT NOT NULL
   , currency VARCHAR NOT NULL
   , mid_comment TEXT
   , ofx_id VARCHAR
@@ -58,7 +58,7 @@ txs.each do |tx|
     transaction_id = t.fetch(:id)
     date = po.fetch('date')
     account = po.fetch('account')
-    amount = po.fetch('amount')
+    cents = po.fetch('cents')
     currency = po.fetch('currency')
     mid_comment = po.fetch('mid_comment')
     ofx_id = po.fetch('ofx_id')
@@ -67,7 +67,7 @@ txs.each do |tx|
       transaction_id: transaction_id,
       date: date,
       account: account,
-      amount: amount,
+      cents: cents,
       currency: currency,
       mid_comment: mid_comment,
       ofx_id: ofx_id,
