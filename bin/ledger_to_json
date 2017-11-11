@@ -53,12 +53,12 @@ def extract_posting(p, date, mid_comment)
   {
     date: final_date,
     account: account,
-    amount_str: amount_str,
+    amountStr: amount_str,
     cents: cents,
     currency: currency,
     comment: comment&.rstrip,
-    mid_comment: mid_comment,
-    ofx_id: find_ofx_id(comment, mid_comment)
+    midComment: mid_comment,
+    ofxId: find_ofx_id(comment, mid_comment)
   }
 end
 
