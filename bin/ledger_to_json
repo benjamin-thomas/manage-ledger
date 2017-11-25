@@ -23,7 +23,7 @@ def get_posting(s)
   line
 end
 
-def extract_posting(p, date, mid_comment)
+def extract_posting(p, timestamp, mid_comment)
   s = StringScanner.new(p)
   s.skip_until(/\s+/)
 
@@ -45,13 +45,15 @@ def extract_posting(p, date, mid_comment)
               s.rest
             end
 
-  final_date = date
-  if (m = /date: (?<date2>\d{4}-\d{2}-\d{2})/.match(comment))
-    final_date = Date.parse(m.named_captures.fetch('date2'))
+  final_timestamp = timestamp
+  if (m = /date: (?<date2>\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.match(comment))
+    final_timestamp = DateTime.parse(m.named_captures.fetch('date2'))
+  elsif (m = /date: (?<date2>\d{4}-\d{2}-\d{2})/.match(comment))
+    final_timestamp = DateTime.parse(m.named_captures.fetch('date2'))
   end
 
   {
-    date: final_date,
+    timestamp: final_timestamp,
     account: account,
     amountStr: amount_str,
     cents: cents,
@@ -62,7 +64,7 @@ def extract_posting(p, date, mid_comment)
   }
 end
 
-def extract_postings(ps, date)
+def extract_postings(ps, timestamp)
   mid_comment = nil
   postings = []
   total = 0
@@ -72,9 +74,9 @@ def extract_postings(ps, date)
       next
     end
     begin
-      postings << extract_posting(p, date, mid_comment)
+      postings << extract_posting(p, timestamp, mid_comment)
     rescue => e
-      p({posting: p})
+      warn({posting: p})
       fail("failed to extract posting: #{e}")
     end
     mid_comment = nil
@@ -120,13 +122,13 @@ end
 def extract_tx(tx)
   header = tx.fetch(:header)
   s = StringScanner.new(header)
-  date_str = s.scan_until(/ /)
-  fail 'expected space' if date_str.nil?
+  timestamp_str = s.scan_until(/ /)
+  fail 'expected space' if timestamp_str.nil?
 
-  date = Date.parse(date_str.rstrip)
+  timestamp = DateTime.parse(timestamp_str.rstrip)
 
   descr, comment = s.rest.split('  ;')
-  postings = extract_postings(tx.fetch(:postings), date)
+  postings = extract_postings(tx.fetch(:postings), timestamp)
   balance = postings.reduce(0) { |sum, p| sum += p.fetch(:cents) }
   if balance != 0
     warn("\033[1;31mImbalanced transaction:\033[1;m")
