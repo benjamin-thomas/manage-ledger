@@ -86,7 +86,14 @@ ts.each do |t|
   lines << "  ; guid: #{SecureRandom.uuid}"
   lines << "  ; #{t.memo} | #{t.payee}"
   lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id} ; date: #{t.date.strftime('%Y-%m-%d')}"
-  lines << "  #{account}"
+  inverse_amount = if t.amount.start_with?('+')
+                     t.amount.sub('+', '-')
+                   elsif t.amount.start_with?('-')
+                     t.amount.sub('-', '+')
+                   else
+                     fail 'Not possible'
+                   end
+  lines << "  #{account}  #{inverse_amount.rjust(amount_padding-account.length)}€"
 
   warn "\nFound missing transaction, copy-paste or add missing ofx_id.".red
   warn 'Use commande below to find proper account quickly:'.red
