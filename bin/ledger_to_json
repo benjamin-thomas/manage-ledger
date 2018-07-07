@@ -10,11 +10,19 @@ require 'awesome_print'
 
 DATE_REGEX = /^\d{4}[\-\/]\d{2}[\-\/]\d{2}/
 
+def named_captures(match, key)
+  if RUBY_VERSION.to_f < 2.4
+    match[key]
+  else
+    match.named_captures.fetch(key)
+  end
+end
+
 def get_posting(s)
   return :eos if s.eos?
 
   line = s.scan_until(/\n/)
-  if line.match?(DATE_REGEX)
+  if line.match(DATE_REGEX)
     s.unscan
     return :finished
   end
@@ -47,9 +55,9 @@ def extract_posting(p, timestamp, mid_comment)
 
   final_timestamp = timestamp
   if (m = /date: (?<date2>\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.match(comment))
-    final_timestamp = DateTime.parse(m.named_captures.fetch('date2'))
+    final_timestamp = DateTime.parse(named_captures(m, 'date2'))
   elsif (m = /date: (?<date2>\d{4}-\d{2}-\d{2})/.match(comment))
-    final_timestamp = DateTime.parse(m.named_captures.fetch('date2'))
+    final_timestamp = DateTime.parse(named_captures(m, 'date2'))
   end
 
   {
@@ -96,7 +104,9 @@ def find_guid!(tx)
   if m.nil?
     fail 'No guid found for current transaction'
   end
-  guid = m.named_captures.fetch('guid')
+
+  guid = named_captures(m, 'guid')
+
   if guid.size != 36
     fail "guid does not appear to be valid: '#{guid}'"
   end
@@ -114,7 +124,7 @@ def find_ofx_id(comment, mid_comment)
   m = OFX_ID_REGEX.match(comment) || OFX_ID_REGEX.match(mid_comment)
   return if m.nil?
 
-  id = m.named_captures.fetch('ofx_id')
+  id = named_captures(m, 'ofx_id')
   fail 'Something is wrong' if id.size != 13
   id
 end
@@ -157,7 +167,7 @@ end
 
 def get_transaction(s)
   line = s.scan_until(/\n/)
-  return :not_transaction unless line.match?(DATE_REGEX)
+  return :not_transaction unless line.match(DATE_REGEX)
 
   tx = {
     header: line,

@@ -4,7 +4,7 @@ require 'date'
 
 prev_date = Date.new(0)
 ARGF.each_line do |line|
-  next unless line.match?(/\A\d{4}/)
+  next unless line.match(/\A\d{4}/)
   date = Date.parse(line.split(' ').first)
 
   if prev_date > date
