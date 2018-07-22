@@ -95,9 +95,12 @@ ts.each do |t|
                    end
   lines << "  #{account}  #{inverse_amount.rjust(amount_padding-account.length)}€"
 
-  warn "\nFound missing transaction, copy-paste or add missing ofx_id.".red
-  warn 'Use commande below to find proper account quickly:'.red
+  warn "\nFound missing transaction, copy-paste or paste the missing ofx_id (already copied)".red
+  warn 'Use command below to find proper account quickly:'.red
   warn "\nhledger accounts ^Expenses | grep Car".yellow
+
+  copy_paste_data = lines[2..-2].join("\n")
+  IO.popen('xsel -ib', 'w') { |f| f << copy_paste_data }
   puts
   puts lines
   puts
