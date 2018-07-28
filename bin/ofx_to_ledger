@@ -53,7 +53,7 @@ ofx = OfxParser::OfxParser.parse(File.open(ofx_path))
 ts = ofx.bank_account.statement.transactions
 
 amount_padding = 49 # Not 50 due to minus sign
-ts.each do |t|
+ts.reverse.each do |t|
   if ledger_content.include?("; ofx_id: #{t.fit_id}")
     warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
     next
@@ -85,7 +85,7 @@ ts.each do |t|
   lines << "#{t.date.strftime('%Y-%m-%d')} #{head}"
   lines << "  ; guid: #{SecureRandom.uuid}"
   lines << "  ; #{t.memo} | #{t.payee}"
-  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id} ; date: #{t.date.strftime('%Y-%m-%d')}"
+  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id}, date: #{t.date.strftime('%Y-%m-%d')}"
   inverse_amount = if t.amount.start_with?('+')
                      t.amount.sub('+', '-')
                    elsif t.amount.start_with?('-')
