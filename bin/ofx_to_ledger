@@ -85,7 +85,8 @@ ts.reverse.each do |t|
   lines << "#{t.date.strftime('%Y-%m-%d')} #{head}"
   lines << "  ; guid: #{SecureRandom.uuid}"
   lines << "  ; #{t.memo} | #{t.payee}"
-  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; ofx_id: #{t.fit_id}, date: #{t.date.strftime('%Y-%m-%d')}"
+  lines << "  ; ofx_id: #{t.fit_id}"
+  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
   inverse_amount = if t.amount.start_with?('+')
                      t.amount.sub('+', '-')
                    elsif t.amount.start_with?('-')
