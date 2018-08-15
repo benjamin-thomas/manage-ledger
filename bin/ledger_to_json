@@ -138,6 +138,13 @@ def extract_tx(tx)
   timestamp = DateTime.parse(timestamp_str.rstrip)
 
   descr, comment = s.rest.split('  ;')
+  cleared = true
+  if descr.start_with?('!', '*')
+    if descr.start_with?('!')
+      cleared = false
+    end
+    descr = descr[2..-1]
+  end
   postings = extract_postings(tx.fetch(:postings), timestamp)
   balance = postings.reduce(0) { |sum, p| sum += p.fetch(:cents) }
   if balance != 0
@@ -162,7 +169,7 @@ def extract_tx(tx)
 
   guid = find_guid!(tx)
 
-  { guid: guid, descr: descr.chomp, comment: comment&.strip, postings: postings }
+  { guid: guid, cleared: cleared, descr: descr.chomp, comment: comment&.strip, postings: postings }
 end
 
 def get_transaction(s)
