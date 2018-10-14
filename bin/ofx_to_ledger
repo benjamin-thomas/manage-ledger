@@ -89,7 +89,7 @@ ts.reverse.each do |t|
   re, p = PAYEE.find { |re, attrs| re.match(t.payee) }
 
   head = p&.fetch(:head) || t.payee
-  account = p&.fetch(:credit) || 'Credit::???'
+  credit_account = p&.fetch(:credit) || 'Credit::???'
   debit_account = p&.fetch(:debit) { 'Debit::???' } # optional field
 
   lines = []
@@ -97,15 +97,23 @@ ts.reverse.each do |t|
   lines << "  ; guid: #{SecureRandom.uuid}"
   lines << "  ; #{t.memo} | #{t.payee}"
   lines << "  ; ofx_id: #{t.fit_id}"
-  lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
+
   inverse_amount = if t.amount.start_with?('+')
                      t.amount.sub('+', '-')
                    elsif t.amount.start_with?('-')
-                     t.amount.sub('-', '+')
+                     t.amount.sub('-', ' ')
                    else
                      fail 'Not possible'
                    end
-  lines << "  #{account}  #{inverse_amount.rjust(amount_padding-account.length)}€"
+
+  if t.amount.start_with?('+')
+    lines << "  #{debit_account}  #{inverse_amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
+    lines << "  #{credit_account}  #{t.amount.rjust(amount_padding-credit_account.length)}€"
+  else
+    lines << "  #{credit_account}  #{inverse_amount.rjust(amount_padding-credit_account.length)}€"
+    lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
+  end
+
 
   warn "\nFound missing transaction, copy-paste or paste the missing ofx_id (already copied)".red
   warn 'Use command below to find proper account quickly:'.red
