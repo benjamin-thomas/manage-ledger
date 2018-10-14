@@ -65,7 +65,7 @@ ts.reverse.each do |t|
   if from
     next if t.date < from
   end
-  if ledger_content.include?("ofx_id: #{t.fit_id}")
+  if ledger_content.include?(" ofx_id: #{t.fit_id}")
     warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
     next
   end
@@ -89,9 +89,9 @@ ts.reverse.each do |t|
   re, p = PAYEE.find { |re, attrs| re.match(t.payee) }
 
   head = p&.fetch(:head) || t.payee
-  account = p&.fetch(:account) || 'Expenses::???'
+  account = p&.fetch(:credit) || 'Credit::???'
+  debit_account = p&.fetch(:debit) { 'Debit::???' } # optional field
 
-  debit_account = 'Assets:Bank'
   lines = []
   lines << "#{t.date.strftime('%Y-%m-%d')} #{head}"
   lines << "  ; guid: #{SecureRandom.uuid}"
