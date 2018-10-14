@@ -88,9 +88,15 @@ ts.reverse.each do |t|
   # Implement memo field, or similar tag: hledger reg Expenses tag:memo=WEB
   re, p = PAYEE.find { |re, attrs| re.match(t.payee) }
 
-  head = p&.fetch(:head) || t.payee
-  credit_account = p&.fetch(:credit) || 'Credit::???'
-  debit_account = p&.fetch(:debit) { 'Debit::???' } # optional field
+  if p
+    head = p.fetch(:head)
+    credit_account = p.fetch(:credit) { abort("Abort! Credit account not specified for: #{head}") }
+    debit_account = p.fetch(:debit) { abort("Abort! Debit account not specified for: #{head}") }
+  else
+    head = t.payee
+    credit_account = 'Credit::???'
+    debit_account = 'Debit::???'
+  end
 
   lines = []
   lines << "#{t.date.strftime('%Y-%m-%d')} #{head}"
