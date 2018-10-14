@@ -4,6 +4,7 @@ load ENV.fetch('PAYEE_DATA_PATH')
 
 require 'bundler'
 require 'securerandom'
+require 'date'
 
 env = ENV['ENV'] || ''
 Bundler.require(:default, env)
@@ -31,9 +32,14 @@ OptionParser.new do |opts|
   Usage: #{pgm_name} [OPTIONS] LEDGER_FILE OFX_FILE
   EOS
 
+  opts.on('--from DATE', 'Ignore transactions before DATE') do |d|
+    options[:from] = Date.parse(d)
+  end
+
   opts.on('-v', '--verbose', 'Run verbosely') do |v|
     options[:verbose] = v
   end
+
 end.parse!
 
 ledger_path = ARGV[0] || exec("#{$PROGRAM_NAME} -h")
@@ -47,6 +53,8 @@ ofx_path = ARGV[1] || exec("#{$PROGRAM_NAME} -h")
 end
 
 ledger_content = File.read(ledger_path)
+from = options[:from]
+warn "Skipping transaction from: #{from}" if from
 
 ofx = OfxParser::OfxParser.parse(File.open(ofx_path))
 
@@ -54,7 +62,10 @@ ts = ofx.bank_account.statement.transactions
 
 amount_padding = 49 # Not 50 due to minus sign
 ts.reverse.each do |t|
-  if ledger_content.include?("; ofx_id: #{t.fit_id}")
+  if from
+    next if t.date < from
+  end
+  if ledger_content.include?("ofx_id: #{t.fit_id}")
     warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
     next
   end
