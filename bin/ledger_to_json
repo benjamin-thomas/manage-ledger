@@ -41,6 +41,7 @@ def extract_posting(p, timestamp, mid_comment)
   s.skip_until(/\s+/)
   amount_str = s.scan_until(/\d+\.\d{2}/)
   if amount_str.nil?
+    warn(p: p)
     fail 'Could not parse amount (format must be: \d+\.\d{2})'
   end
   amount = BigDecimal.new(amount_str)

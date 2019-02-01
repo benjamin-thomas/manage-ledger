@@ -3,14 +3,69 @@
 require 'date'
 require 'bigdecimal'
 
+require 'awesome_print'
+
 CURRENCY_SYMBOL = '€'
 
+def print_budget_lines(sum_for_accounts)
+  if sum_for_accounts.empty? # in vim, `vap` (or `gqap`) in last ledger transaction will select an empty line before the transaction block
+    print('OOPS')
+    return
+  end
+  top_accounts = sum_for_accounts.map { |acc, amt| acc.split(':').first }
+  sum_for_accounts2 = sum_for_accounts.reject { |acc, amt| acc.start_with?('Assets') }
+
+  sum_for_budgets = if top_accounts.include?('Expenses')
+                      sum_for_accounts2.each_with_object({}) do |(acc, amt), h|
+                        h[acc.sub('Expenses', 'Budget')] = amt * -1
+                      end
+                    elsif top_accounts.include?('Income')
+                      sum_for_accounts2.each_with_object({}) do |(acc, amt), h|
+                        h['Budget:TODO'] = amt * -1
+                      end
+                    else
+                      recap =  {
+                        top_accounts: top_accounts,
+                        sum_for_accounts: sum_for_accounts,
+                        sum_for_accounts2: sum_for_accounts2,
+                      }
+                      fail "Should/Could this happen?? (#{recap})"
+                    end
+
+  sum_merge = sum_for_accounts2.merge(sum_for_budgets)
+
+  sum_merge.each do |account, amount|
+    padding = 50 - account.size - 2
+    new_line_budget = "  [#{account}]  #{format('%.2f%s', amount, CURRENCY_SYMBOL).rjust(padding)}"
+    puts(new_line_budget)
+  end
+end
+
 total = 0
+budget_lines = []
+accounts = []
+sum_for_accounts = Hash.new(0)
+last_line = nil
 ARGF.each_line do |line|
+  last_line = line
   line.gsub!("\t", ' ')
-  total = 0 if line.match(/^\d{4}/)
+  if line.match(/^\d{4}/)
+    total = 0
+    budget_lines = []
+    accounts = []
+    sum_for_accounts = Hash.new(0)
+  end
   if !line.start_with?(' ') || line.match(/^\s+;/)
-    puts line
+    if line == "\n"
+      # puts budget_lines
+      unless File.exist?('/tmp/no_budget')
+        print_budget_lines(sum_for_accounts)
+      end
+      # ap(sum_for_accounts)
+      puts line
+    else
+      puts line
+    end
     next
   end
 
@@ -27,10 +82,34 @@ ARGF.each_line do |line|
     next
   end
   total += BigDecimal.new(amount)
+  sum_for_accounts[account] += BigDecimal.new(amount)
 
   padding = 50 - account.size
   new_line = "  #{account}  #{format('%.2f%s', amount, CURRENCY_SYMBOL).rjust(padding)}"
 
+  # if true || budget_lines.empty?
+  #   account_for_budget_line = account
+  # else
+  #   prev_account = accounts[-1]
+  #   account_for_budget_line = if prev_account.include?('Expenses')
+  #                               prev_account.sub('Expenses', 'Budget')
+  #                             elsif prev_account.include?('Income')
+  #                               'Budget:TODO'
+  #                             else
+  #                               '???'
+  #                             end
+  # end
+  # budget_padding = 50 - account_for_budget_line.size - 2
+
+  # new_line_budget = "  [#{account_for_budget_line}]  #{format('%.2f%s', amount, CURRENCY_SYMBOL).rjust(budget_padding)}"
+
   new_line << "  ; #{comment.lstrip}" if comment
   puts new_line
+  # budget_lines << new_line_budget
+  accounts << account
 end
+
+if budget_lines.any? && last_line != "\n"
+  puts budget_lines
+end
+

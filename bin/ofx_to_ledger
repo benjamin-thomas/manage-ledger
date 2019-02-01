@@ -70,22 +70,6 @@ ts.reverse.each do |t|
     next
   end
 
-  # previous_txs = ''
-  # term = t.payee
-  # res = while previous_txs.empty?
-  #         previous_txs = `hledger reg Expenses desc:^'#{term}'$' --begin thisquarter`
-  #         require 'pry' ; binding.pry
-  #         term = term.split[0..-2].join(' ')
-  #         break :not_found if term.empty?
-  #       end
-  # Use thisquarter, thisyear, all if empty
-  # Or try everything first, and check if payee has same expenses account everywhere
-  # if positive, check Income, not Expenses
-  # if not found, try t.payee.split # 'PAYEE RANDOM
-  # t.payee.split[0..-2].join(' ')
-  # recurring transactions: hledger reg desc:'VIREMENT EMIS' amt:660
-  # This builtin also matches, but only the last transaction : hledger print Expenses -m PAYEE
-  # Implement memo field, or similar tag: hledger reg Expenses tag:memo=WEB
   re, p = PAYEE.find { |re, attrs| re.match(t.payee) }
 
   if p
@@ -94,8 +78,13 @@ ts.reverse.each do |t|
     debit_account = p.fetch(:debit) { abort("Abort! Debit account not specified for: #{head}") }
   else
     head = t.payee
-    credit_account = 'Credit::???'
-    debit_account = 'Debit::???'
+    if t.amount.start_with?('+')
+      credit_account = 'Assets:Bank'
+      debit_account = 'Income:???'
+    else
+      credit_account = 'Expenses::???'
+      debit_account = 'Assets:Bank'
+    end
   end
 
   lines = []
@@ -113,11 +102,13 @@ ts.reverse.each do |t|
                    end
 
   if t.amount.start_with?('+')
-    lines << "  #{debit_account}  #{inverse_amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
-    lines << "  #{credit_account}  #{t.amount.rjust(amount_padding-credit_account.length)}€"
+    lines << "  #{debit_account}  #{inverse_amount.rjust(amount_padding-debit_account.length)}€"
+    lines << "  #{credit_account}  #{t.amount.rjust(amount_padding-credit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
+    copy_paste_data = lines[2..-2].join("\n")
   else
     lines << "  #{credit_account}  #{inverse_amount.rjust(amount_padding-credit_account.length)}€"
     lines << "  #{debit_account}  #{t.amount.rjust(amount_padding-debit_account.length)}€  ; date: #{t.date.strftime('%Y-%m-%d')}"
+    copy_paste_data = lines.reject { |l| l.lstrip.start_with?(credit_account) }[2..-1].join("\n")
   end
 
 
@@ -125,7 +116,6 @@ ts.reverse.each do |t|
   warn 'Use command below to find proper account quickly:'.red
   warn "\nhledger accounts ^Expenses | grep Car".yellow
 
-  copy_paste_data = lines[2..-2].join("\n")
   IO.popen('xsel -ib', 'w') { |f| f << copy_paste_data }
   puts
   puts lines
