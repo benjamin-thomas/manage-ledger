@@ -67,6 +67,19 @@ ts.reverse.each do |t|
   end
   if ledger_content.include?(" ofx_id: #{t.fit_id}")
     warn "Transaction #{t.fit_id} already in the ledger file, skipping..."
+    if ENV['DEBUG'] == '1'
+      ledger_result = `hledger reg tag:ofx_id=#{t.fit_id} ^Assets:Bank real:`
+      if ledger_result.empty?
+        puts "hledger reg tag:ofx_id=#{t.fit_id} ^Assets:Bank real:"
+        abort("Could not find ofx_id with hledger, #{t.amount}")
+      end
+      ledger_price = ledger_result.chomp.split.last.sub(/€$/, '')
+
+      amount = t.amount.sub(/^\+/, '')
+      if ledger_price != amount
+        fail("Price does not match: ofx_id#{t.fit_id}, #{ledger_price}, #{amount}")
+      end
+    end
     next
   end
 

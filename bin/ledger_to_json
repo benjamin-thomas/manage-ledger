@@ -139,10 +139,10 @@ def extract_tx(tx)
   timestamp = DateTime.parse(timestamp_str.rstrip)
 
   descr, comment = s.rest.split('  ;')
-  cleared = true
+  cleared = false
   if descr.start_with?('!', '*')
-    if descr.start_with?('!')
-      cleared = false
+    if descr.start_with?('*')
+      cleared = true
     end
     descr = descr[2..-1]
   end
